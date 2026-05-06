@@ -1,0 +1,132 @@
+@model List<Client.Services.Models.EnrollmentDto>
+@{
+    ViewData["Title"] = "Duyệt đăng ký";
+    var currentStatus = ViewBag.CurrentStatus as int?;
+    string keyword = ViewBag.Keyword as string ?? "";
+    int currentPage = ViewBag.Page ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalItems = ViewBag.TotalItems ?? 0;
+    int pageSize = ViewBag.PageSize ?? 10;
+}
+
+<div class="page-header">
+    <h1>Duyệt đăng ký học</h1>
+</div>
+
+<div class="mb-3">
+    <div class="btn-group" role="group">
+        <a asp-action="Index" class="btn btn-sm @(currentStatus == null ? "btn-primary" : "btn-outline-primary")">Tất cả</a>
+        <a asp-action="Index" asp-route-status="0" class="btn btn-sm @(currentStatus == 0 ? "btn-warning" : "btn-outline-warning")">Chờ duyệt</a>
+        <a asp-action="Index" asp-route-status="1" class="btn btn-sm @(currentStatus == 1 ? "btn-success" : "btn-outline-success")">Đã duyệt</a>
+        <a asp-action="Index" asp-route-status="2" class="btn btn-sm @(currentStatus == 2 ? "btn-danger" : "btn-outline-danger")">Từ chối</a>
+        <a asp-action="Index" asp-route-status="3" class="btn btn-sm @(currentStatus == 3 ? "btn-secondary" : "btn-outline-secondary")">Đã hủy</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <input type="hidden" name="status" value="@currentStatus" />
+            <div class="col-md-8">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="Học viên, email, lớp, khóa học..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trang</label>
+                <select name="pageSize" class="form-select">
+                    <option value="5" selected="@(pageSize == 5)">5</option>
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                <a asp-action="Index" asp-route-status="@currentStatus" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Không có đăng ký nào.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Học viên</th>
+                    <th>Email</th>
+                    <th>Lớp học</th>
+                    <th>Khóa học</th>
+                    <th>Ngày ĐK</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var idx = 0; }
+                @foreach (var e in Model)
+                {
+                    idx++;
+                    <tr>
+                        <td>@(((currentPage - 1) * pageSize) + idx)</td>
+                        <td>@e.StudentName</td>
+                        <td>@e.StudentEmail</td>
+                        <td>@e.ClassName</td>
+                        <td>@e.CourseName</td>
+                        <td>@e.EnrollDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge @e.StatusBadge">@e.StatusText</span></td>
+                        <td>
+                            @if (e.Status == 0)
+                            {
+                                <div class="btn-group btn-group-sm">
+                                    <form asp-action="Approve" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@e.Id" />
+                                        <button type="submit" class="btn btn-success btn-sm"
+                                                onclick="return confirm('Duyệt đăng ký này?')">
+                                            <i class="bi bi-check-circle me-1"></i>Duyệt
+                                        </button>
+                                    </form>
+                                    <form asp-action="Reject" method="post" class="d-inline ms-1">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@e.Id" />
+                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                onclick="return confirm('Từ chối đăng ký này?')">
+                                            <i class="bi bi-x-circle me-1"></i>Từ chối
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <a asp-action="Details" asp-route-id="@e.Id" class="btn btn-sm btn-outline-info">
+                                    <i class="bi bi-eye me-1"></i>Chi tiết
+                                </a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">Tổng: <strong>@totalItems</strong> đăng ký</div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-status="@currentStatus" asp-route-keyword="@keyword" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage - 1)">Trước</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">@currentPage / @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-status="@currentStatus" asp-route-keyword="@keyword" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage + 1)">Sau</a>
+            </li>
+        </ul>
+    </nav>
+</div>

@@ -1,0 +1,116 @@
+@model List<Client.Services.Models.LearningMaterialDto>
+@{
+    ViewData["Title"] = "Gửi tài liệu học";
+    var classes = ViewBag.Classes as List<Client.Services.Models.ClassDto> ?? new();
+    int? selectedClassId = ViewBag.SelectedClassId as int?;
+}
+
+<div class="page-header">
+    <h1>Gửi tài liệu học</h1>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Đăng tài liệu mới</div>
+    <div class="card-body">
+        <form asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-3">
+            @Html.AntiForgeryToken()
+            <div class="col-md-4">
+                <label class="form-label">Lớp học</label>
+                <select name="ClassId" class="form-select" required>
+                    <option value="">-- Chọn lớp --</option>
+                    @foreach (var c in classes)
+                    {
+                        <option value="@c.Id" selected="@(selectedClassId == c.Id)">@c.Name (@c.CourseName)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Tiêu đề tài liệu</label>
+                <input type="text" name="Title" class="form-control" required maxlength="300" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">File tài liệu</label>
+                <input type="file" name="File" class="form-control" required />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Mô tả</label>
+                <textarea name="Description" class="form-control" rows="2" maxlength="2000"></textarea>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload me-1"></i>Gửi tài liệu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Danh sách tài liệu đã gửi</span>
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <select name="classId" class="form-select form-select-sm">
+                <option value="">Tất cả lớp</option>
+                @foreach (var c in classes)
+                {
+                    <option value="@c.Id" selected="@(selectedClassId == c.Id)">@c.Name</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Lọc</button>
+        </form>
+    </div>
+    <div class="card-body">
+        @if (!Model.Any())
+        {
+            <div class="text-muted">Chưa có tài liệu nào.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tiêu đề</th>
+                            <th>Lớp</th>
+                            <th>File</th>
+                            <th>Ngày gửi</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@m.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(m.Description))
+                                    {
+                                        <small class="text-muted">@m.Description</small>
+                                    }
+                                </td>
+                                <td>@m.ClassName</td>
+                                <td>
+                                    <a asp-action="Download" asp-route-id="@m.Id" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-file-earmark-arrow-down me-1"></i>@m.OriginalFileName
+                                    </a>
+                                </td>
+                                <td>@m.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end">
+                                    <form asp-action="Delete" method="post" class="d-inline"
+                                          onsubmit="return confirm('Bạn chắc chắn muốn xóa tài liệu này?')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@m.Id" />
+                                        <input type="hidden" name="classId" value="@selectedClassId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

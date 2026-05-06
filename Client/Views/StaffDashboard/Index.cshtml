@@ -1,0 +1,93 @@
+@model Client.Services.Models.DashboardDto
+@{
+    ViewData["Title"] = "Staff Dashboard";
+}
+
+@if (Model != null)
+{
+    <div class="teacher-dashboard">
+        <div class="teacher-kpi-grid">
+            <div class="teacher-kpi-card">
+                <div class="teacher-kpi-icon teacher-kpi-icon-blue">
+                    <i class="bi bi-book"></i>
+                </div>
+                <div>
+                    <p class="teacher-kpi-label">Khóa học</p>
+                    <h3 class="teacher-kpi-value">@Model.TotalCourses</h3>
+                </div>
+            </div>
+            <div class="teacher-kpi-card">
+                <div class="teacher-kpi-icon teacher-kpi-icon-mint">
+                    <i class="bi bi-calendar3"></i>
+                </div>
+                <div>
+                    <p class="teacher-kpi-label">Lớp học</p>
+                    <h3 class="teacher-kpi-value">@Model.TotalClasses</h3>
+                </div>
+            </div>
+            <div class="teacher-kpi-card">
+                <div class="teacher-kpi-icon teacher-kpi-icon-orange">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div>
+                    <p class="teacher-kpi-label">Giáo viên</p>
+                    <h3 class="teacher-kpi-value">@Model.TotalTeachers</h3>
+                </div>
+            </div>
+            <div class="teacher-kpi-card">
+                <div class="teacher-kpi-icon teacher-kpi-icon-blue">
+                    <i class="bi bi-mortarboard"></i>
+                </div>
+                <div>
+                    <p class="teacher-kpi-label">Học viên</p>
+                    <h3 class="teacher-kpi-value">@Model.TotalStudents</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="teacher-card">
+            <div class="teacher-card-header">
+                <h2>Tổng quan vận hành</h2>
+            </div>
+            <div class="row g-3 p-3">
+                <div class="col-md-4">
+                    <div class="teacher-kpi-card h-100">
+                        <div class="teacher-kpi-icon teacher-kpi-icon-mint">
+                            <i class="bi bi-play-circle"></i>
+                        </div>
+                        <div>
+                            <p class="teacher-kpi-label">Lớp đang diễn ra</p>
+                            <h3 class="teacher-kpi-value">@Model.ActiveClasses</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="teacher-kpi-card h-100">
+                        <div class="teacher-kpi-icon teacher-kpi-icon-orange">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                        <div>
+                            <p class="teacher-kpi-label">Đăng ký chờ duyệt</p>
+                            <h3 class="teacher-kpi-value">@Model.PendingEnrollments</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="teacher-kpi-card h-100">
+                        <div class="teacher-kpi-icon teacher-kpi-icon-blue">
+                            <i class="bi bi-cash-stack"></i>
+                        </div>
+                        <div>
+                            <p class="teacher-kpi-label">Doanh thu tháng</p>
+                            <h3 class="teacher-kpi-value">@Model.MonthlyRevenue.ToString("N0")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">Không thể tải dữ liệu dashboard.</div>
+}

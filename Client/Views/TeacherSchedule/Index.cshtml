@@ -1,0 +1,82 @@
+@model Client.ViewModels.Teacher.TeacherDailyScheduleViewModel
+@{
+    ViewData["Title"] = "Lịch dạy";
+}
+
+<div class="page-header"><h1>Lịch dạy của tôi</h1></div>
+
+<p class="text-muted">Chọn ngày để xem lịch theo ca. Bấm vào từng lớp để vào trang điểm danh của buổi đó.</p>
+
+<form asp-action="Index" method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label mb-1">Ngày dạy</label>
+        <input type="date" name="date" class="form-control" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i>Xem lịch
+        </button>
+    </div>
+    <div class="col-auto">
+        <span class="badge bg-light text-dark fs-6">@Model.DayTitle, @Model.SelectedDate.ToString("dd/MM/yyyy")</span>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 150px;">Ca học</th>
+                    <th style="width: 170px;">Khung giờ</th>
+                    <th>Lớp giáo viên dạy</th>
+                    <th style="width: 180px;">Khoảng cách</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var slot in Model.Slots)
+                {
+                    <tr>
+                        <td class="fw-semibold">@slot.SlotName</td>
+                        <td>@slot.TimeRange</td>
+                        <td>
+                            @if (!slot.Classes.Any())
+                            {
+                                <span class="text-muted">Không có lớp trong ca này.</span>
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var cls in slot.Classes)
+                                    {
+                                        if (cls.IsInDateRange)
+                                        {
+                                            <a asp-controller="TeacherAttendance"
+                                               asp-action="Take"
+                                               asp-route-id="@cls.ClassId"
+                                               asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")"
+                                               class="btn btn-sm btn-primary text-start">
+                                                <div class="fw-semibold">@cls.ClassName</div>
+                                                <div class="small">@cls.CourseName</div>
+                                                <div class="small">@cls.StartTime - @cls.EndTime | @cls.RoomName</div>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="btn btn-sm btn-outline-secondary text-start disabled">
+                                                <div class="fw-semibold">@cls.ClassName</div>
+                                                <div class="small">@cls.CourseName</div>
+                                                <div class="small">@cls.StartTime - @cls.EndTime | @cls.RoomName</div>
+                                            </span>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </td>
+                        <td><span class="text-muted">@slot.BreakNote</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

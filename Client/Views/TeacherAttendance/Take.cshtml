@@ -1,0 +1,137 @@
+@{
+    ViewData["Title"] = "Điểm danh";
+    var classInfo = ViewBag.ClassInfo as Client.Services.Models.ClassDto;
+    var existing = ViewBag.ExistingAttendance as List<Client.Services.Models.AttendanceDto> ?? new();
+    var date = (DateTime)ViewBag.Date;
+    var selectedDow = (int)date.DayOfWeek;
+    var scheduleDays = classInfo?.Schedules.Select(s => s.DayOfWeek).Distinct().ToHashSet() ?? new HashSet<int>();
+    var isDateInClassRange = classInfo != null && date.Date >= classInfo.StartDate.Date && date.Date <= classInfo.EndDate.Date;
+    var isScheduledDay = scheduleDays.Contains(selectedDow);
+    var canTakeAttendance = classInfo != null && isDateInClassRange && isScheduledDay;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Điểm danh: @classInfo?.Name</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <strong>Ngày:</strong> @date.ToString("dd/MM/yyyy")
+        @if (existing.Any()) { <span class="badge bg-info ms-2">Đã có điểm danh — sẽ cập nhật</span> }
+    </div>
+    <div class="card-body">
+        @if (classInfo != null)
+        {
+            <form asp-action="Take" asp-route-id="@classInfo.Id" method="get" class="row g-2 align-items-end mb-3">
+                <div class="col-auto">
+                    <label class="form-label mb-1">Chọn ngày học</label>
+                    <input type="date" name="date" class="form-control" value="@date.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-calendar-check me-1"></i>Xem ngày này</button>
+                </div>
+                <div class="col-12">
+                    <small class="text-muted">
+                        Lịch học:
+                        @(classInfo.Schedules.Any()
+                            ? string.Join(", ", classInfo.Schedules.Select(s => $"{s.DayOfWeekText} ({s.StartTime}-{s.EndTime})"))
+                            : "Chưa cài đặt")
+                    </small>
+                </div>
+            </form>
+        }
+
+        @if (!canTakeAttendance)
+        {
+            <div class="alert alert-warning">
+                Ngày được chọn không phải buổi học hợp lệ. Vui lòng chọn đúng ngày theo lịch học và trong khoảng thời gian của lớp.
+            </div>
+        }
+
+        @if (classInfo == null || classInfo.CurrentStudents == 0)
+        {
+            <div class="alert alert-warning">Lớp chưa có học viên nào.</div>
+        }
+        else if (!canTakeAttendance)
+        {
+        }
+        else
+        {
+            <form asp-action="Take" asp-route-id="@classInfo.Id" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="ClassId" value="@classInfo.Id" />
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>#</th><th>Học viên</th><th>Có mặt</th><th>Vắng</th><th>Đi muộn</th><th>Có phép</th><th>Ghi chú</th></tr></thead>
+                        <tbody id="attendance-body">
+                            <tr>
+                                <td colspan="7" class="text-muted">Đang tải danh sách học viên...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle me-1"></i>@(existing.Any() ? "Cập nhật điểm danh" : "Lưu điểm danh")
+                </button>
+            </form>
+
+            <script>
+                var classId = @classInfo.Id;
+                var token = '@Context.Session.GetString("AuthToken")';
+                var apiBase = '@(Context.RequestServices.GetRequiredService<IConfiguration>()["ApiSettings:BaseUrl"] ?? "http://localhost:5000")';
+                var existing = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                    existing,
+                    new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                    }));
+
+                fetch(apiBase + '/api/classes/' + classId + '/students', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(r => r.json())
+                .then(students => {
+                    var body = document.getElementById('attendance-body');
+                    body.innerHTML = '';
+                    if (!students || students.length === 0) {
+                        body.innerHTML = '<tr><td colspan="7" class="text-muted">Lớp hiện tại chưa có học viên được duyệt đăng ký.</td></tr>';
+                        return;
+                    }
+
+                    function getValue(obj, camelKey, pascalKey) {
+                        if (!obj) return null;
+                        if (obj[camelKey] !== undefined) return obj[camelKey];
+                        return obj[pascalKey];
+                    }
+
+                    students.forEach(function(s, idx) {
+                        var studentId = getValue(s, 'id', 'Id');
+                        var fullName = getValue(s, 'fullName', 'FullName') || '';
+
+                        var ex = existing.find(e =>
+                            getValue(e, 'studentId', 'StudentId') === studentId);
+                        var status = ex ? Number(getValue(ex, 'status', 'Status') ?? 0) : 0;
+                        var note = ex ? (getValue(ex, 'note', 'Note') || '') : '';
+                        body.innerHTML += '<tr>' +
+                            '<td>' + (idx+1) + '</td>' +
+                            '<td>' + fullName + '<input type="hidden" name="Items['+idx+'].StudentId" value="'+studentId+'" /></td>' +
+                            '<td><input type="radio" name="Items['+idx+'].Status" value="0" '+(status==0?'checked':'')+' class="form-check-input" /></td>' +
+                            '<td><input type="radio" name="Items['+idx+'].Status" value="1" '+(status==1?'checked':'')+' class="form-check-input" /></td>' +
+                            '<td><input type="radio" name="Items['+idx+'].Status" value="2" '+(status==2?'checked':'')+' class="form-check-input" /></td>' +
+                            '<td><input type="radio" name="Items['+idx+'].Status" value="3" '+(status==3?'checked':'')+' class="form-check-input" /></td>' +
+                            '<td><input type="text" name="Items['+idx+'].Note" value="'+note+'" class="form-control form-control-sm" style="width:150px;" /></td>' +
+                            '</tr>';
+                    });
+                })
+                .catch(() => {
+                    var body = document.getElementById('attendance-body');
+                    body.innerHTML = '<tr><td colspan="7" class="text-danger">Không thể tải danh sách học viên. Vui lòng thử lại.</td></tr>';
+                });
+            </script>
+        }
+    </div>
+</div>

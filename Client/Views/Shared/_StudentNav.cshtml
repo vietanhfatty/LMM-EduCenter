@@ -1,0 +1,50 @@
+@{
+    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    string Active(params string[] names) => names.Any(n => ctrl.Contains(n, StringComparison.OrdinalIgnoreCase)) ? "active" : "";
+}
+
+<li class="nav-item">
+    <a class="nav-link @Active("StudentDashboard")" asp-controller="StudentDashboard" asp-action="Index">
+        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentCourse")" asp-controller="StudentCourse" asp-action="Index">
+        <i class="bi bi-book me-2"></i>Khóa học
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentEnrollment")" asp-controller="StudentEnrollment" asp-action="Index">
+        <i class="bi bi-clipboard-check me-2"></i>Đăng ký của tôi
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentSchedule")" asp-controller="StudentSchedule" asp-action="Index">
+        <i class="bi bi-calendar-week me-2"></i>Lịch học
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentMaterial")" asp-controller="StudentMaterial" asp-action="Index">
+        <i class="bi bi-file-earmark-arrow-down me-2"></i>Tài liệu học
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentAttendance")" asp-controller="StudentAttendance" asp-action="Index">
+        <i class="bi bi-check2-square me-2"></i>Điểm danh
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentGrade")" asp-controller="StudentGrade" asp-action="Index">
+        <i class="bi bi-journal-text me-2"></i>Điểm
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentPayment")" asp-controller="StudentPayment" asp-action="Index">
+        <i class="bi bi-credit-card me-2"></i>Học phí
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("StudentNotification")" asp-controller="StudentNotification" asp-action="Index">
+        <i class="bi bi-bell me-2"></i>Thông báo
+    </a>
+</li>

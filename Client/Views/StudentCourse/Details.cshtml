@@ -1,0 +1,112 @@
+@model Client.Services.Models.CourseDto
+@{
+    ViewData["Title"] = Model.Name;
+    var classes = ViewBag.AvailableClasses as List<Client.Services.Models.ClassDto> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>@Model.Name</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header fw-bold">Thông tin khóa học</div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <p>@Model.Description</p>
+                }
+                <div class="row">
+                    <div class="col-sm-6">
+                        <p><strong>Thời lượng:</strong> @Model.DurationInHours giờ</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <p><strong>Học phí:</strong> @Model.Fee.ToString("N0") VND</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header fw-bold">Lớp học đang mở (@classes.Count lớp)</div>
+            <div class="card-body">
+                @if (!classes.Any())
+                {
+                    <p class="text-muted">Hiện chưa có lớp nào đang mở cho khóa học này.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tên lớp</th>
+                                    <th>Giáo viên</th>
+                                    <th>Phòng</th>
+                                    <th>Lịch học</th>
+                                    <th>Sĩ số</th>
+                                    <th>Bắt đầu</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cls in classes)
+                                {
+                                    <tr>
+                                        <td>@cls.Name</td>
+                                        <td>@cls.TeacherName</td>
+                                        <td>@cls.RoomName</td>
+                                        <td>
+                                            @foreach (var s in cls.Schedules)
+                                            {
+                                                <span class="badge bg-light text-dark me-1">@s.DayOfWeekText @s.StartTime-@s.EndTime</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="@(cls.CurrentStudents >= cls.MaxStudents ? "text-danger fw-bold" : "")">
+                                                @cls.CurrentStudents/@cls.MaxStudents
+                                            </span>
+                                        </td>
+                                        <td>@cls.StartDate.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            @if (cls.CurrentStudents < cls.MaxStudents)
+                                            {
+                                                <form asp-controller="StudentEnrollment" asp-action="Enroll" method="post">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="classId" value="@cls.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-success"
+                                                            onclick="return confirm('Bạn có chắc muốn đăng ký lớp này?')">
+                                                        <i class="bi bi-plus-circle me-1"></i>Đăng ký
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Hết chỗ</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-info-circle text-primary" style="font-size:2rem;"></i>
+                <p class="mt-2 small text-muted">
+                    Chọn lớp học phù hợp và nhấn "Đăng ký". Đăng ký sẽ được Staff duyệt trước khi có hiệu lực.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,12 @@
+namespace Server.DTOs.Auth;
+
+public class AuthResponse
+{
+    public string Token { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Avatar { get; set; }
+    public IReadOnlyList<string> Roles { get; set; } = Array.Empty<string>();
+}

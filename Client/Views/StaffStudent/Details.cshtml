@@ -1,0 +1,52 @@
+@model Client.Services.Models.UserDto
+@{
+    ViewData["Title"] = "Chi tiết học viên";
+}
+
+<div class="page-header">
+    <h1>Chi tiết học viên</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning"><i class="bi bi-pencil me-1"></i>Sửa</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Họ tên</dt>
+                    <dd class="col-sm-8 fw-semibold">@Model.FullName</dd>
+
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">@Model.Email</dd>
+
+                    <dt class="col-sm-4">Điện thoại</dt>
+                    <dd class="col-sm-8">@(Model.Phone ?? "—")</dd>
+
+                    <dt class="col-sm-4">Ngày sinh</dt>
+                    <dd class="col-sm-8">@(Model.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—")</dd>
+
+                    <dt class="col-sm-4">Địa chỉ</dt>
+                    <dd class="col-sm-8">@(Model.Address ?? "—")</dd>
+
+                    <dt class="col-sm-4">Trạng thái</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success badge-status">Hoạt động</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger badge-status">Vô hiệu hóa</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">Ngày tạo</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

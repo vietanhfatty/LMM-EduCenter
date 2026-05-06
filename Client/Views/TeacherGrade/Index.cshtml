@@ -1,0 +1,79 @@
+@model List<Client.Services.Models.ClassDto>
+@{
+    ViewData["Title"] = "Quản lý điểm";
+    string keyword = ViewBag.Keyword as string ?? "";
+    int? status = ViewBag.Status as int?;
+    int currentPage = ViewBag.Page ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalItems = ViewBag.TotalItems ?? 0;
+    int pageSize = ViewBag.PageSize ?? 10;
+}
+
+<div class="page-header"><h1>Quản lý điểm</h1></div>
+<p class="text-muted">Chọn lớp để nhập hoặc xem điểm.</p>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="Tên lớp, khóa học..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái</label>
+                <select name="status" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="0" selected="@(status == 0)">Sắp khai giảng</option>
+                    <option value="1" selected="@(status == 1)">Đang diễn ra</option>
+                    <option value="2" selected="@(status == 2)">Đã hoàn thành</option>
+                    <option value="3" selected="@(status == 3)">Đã hủy</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trang</label>
+                <select name="pageSize" class="form-select">
+                    <option value="5" selected="@(pageSize == 5)">5</option>
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                <a asp-action="Index" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Lớp</th><th>Khóa học</th><th>Sĩ số</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>@c.Name</td><td>@c.CourseName</td><td>@c.CurrentStudents/@c.MaxStudents</td>
+                    <td>
+                        <a asp-action="Enter" asp-route-id="@c.Id" class="btn btn-sm btn-primary"><i class="bi bi-pencil me-1"></i>Input Mark</a>
+                        <a asp-action="ClassGrades" asp-route-id="@c.Id" class="btn btn-sm btn-outline-info"><i class="bi bi-table me-1"></i>Xem điểm</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">Tổng: <strong>@totalItems</strong> lớp</div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-keyword="@keyword" asp-route-status="@status" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage - 1)">Trước</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">@currentPage / @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-keyword="@keyword" asp-route-status="@status" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage + 1)">Sau</a>
+            </li>
+        </ul>
+    </nav>
+</div>

@@ -1,0 +1,144 @@
+@model List<Client.Services.Models.ClassDto>
+@{
+    ViewData["Title"] = "Quản lý Lớp học";
+    string keyword = ViewBag.Keyword as string ?? "";
+    int? status = ViewBag.Status as int?;
+    int? courseId = ViewBag.CourseId as int?;
+    int currentPage = ViewBag.Page ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalItems = ViewBag.TotalItems ?? 0;
+    int pageSize = ViewBag.PageSize ?? 10;
+    var courses = ViewBag.Courses as List<Client.Services.Models.CourseDto> ?? new();
+}
+
+<div class="page-header">
+    <h1>Quản lý Lớp học</h1>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Thêm lớp học
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="Tên lớp, khóa học, GV, phòng..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái</label>
+                <select name="status" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="0" selected="@(status == 0)">Sắp khai giảng</option>
+                    <option value="1" selected="@(status == 1)">Đang diễn ra</option>
+                    <option value="2" selected="@(status == 2)">Đã hoàn thành</option>
+                    <option value="3" selected="@(status == 3)">Đã hủy</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Khóa học</label>
+                <select name="courseId" class="form-select">
+                    <option value="">Tất cả</option>
+                    @foreach (var c in courses)
+                    {
+                        <option value="@c.Id" selected="@(courseId == c.Id)">@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Trang</label>
+                <select name="pageSize" class="form-select">
+                    <option value="5" selected="@(pageSize == 5)">5</option>
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                <a asp-action="Index" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Tên lớp</th>
+                    <th>Khóa học</th>
+                    <th>Giáo viên</th>
+                    <th>Phòng</th>
+                    <th>Sĩ số</th>
+                    <th>Thời gian</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có lớp học nào.</td></tr>
+                }
+                @foreach (var (item, i) in Model.Select((v, i) => (v, i)))
+                {
+                    <tr>
+                        <td>@(((currentPage - 1) * pageSize) + i + 1)</td>
+                        <td class="fw-semibold">@item.Name</td>
+                        <td>@item.CourseName</td>
+                        <td>@item.TeacherName</td>
+                        <td>@item.RoomName</td>
+                        <td>@item.CurrentStudents/@item.MaxStudents</td>
+                        <td style="font-size:0.85rem;">
+                            @item.StartDate.ToString("dd/MM/yyyy") - @item.EndDate.ToString("dd/MM/yyyy")
+                        </td>
+                        <td><span class="badge @item.StatusBadge badge-status">@item.StatusText</span></td>
+                        <td class="text-end">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Chi tiết">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning" title="Sửa">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa lớp học này?')">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">Tổng: <strong>@totalItems</strong> lớp học</div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-keyword="@keyword"
+                   asp-route-status="@status"
+                   asp-route-courseId="@courseId"
+                   asp-route-pageSize="@pageSize"
+                   asp-route-page="@(currentPage - 1)">Trước</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">@currentPage / @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-keyword="@keyword"
+                   asp-route-status="@status"
+                   asp-route-courseId="@courseId"
+                   asp-route-pageSize="@pageSize"
+                   asp-route-page="@(currentPage + 1)">Sau</a>
+            </li>
+        </ul>
+    </nav>
+</div>

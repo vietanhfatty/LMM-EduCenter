@@ -1,0 +1,56 @@
+@model List<Client.Services.Models.GradeDto>
+@{
+    ViewData["Title"] = "Bảng điểm lớp";
+    var classInfo = ViewBag.ClassInfo as Client.Services.Models.ClassDto;
+    var students = Model.Select(g => new { g.StudentId, g.StudentName }).Distinct().ToList();
+    var types = new[] { (0, "Quiz"), (1, "Giữa kỳ"), (2, "Cuối kỳ"), (3, "Bài tập"), (4, "Tham gia") };
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Bảng điểm: @classInfo?.Name</h1>
+    <div>
+        <a asp-action="Enter" asp-route-id="@classInfo?.Id" class="btn btn-primary btn-sm"><i class="bi bi-pencil me-1"></i>Input Mark</a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Chưa có điểm nào.</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead>
+                    <tr>
+                        <th class="text-start">Học viên</th>
+                        @foreach (var (_, name) in types)
+                        {
+                            <th>@name</th>
+                        }
+                        <th>TB</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in students)
+                    {
+                        var sg = Model.Where(g => g.StudentId == s.StudentId).ToList();
+                        var totalW = sg.Sum(g => g.Weight);
+                        var avg = totalW > 0 ? sg.Sum(g => g.Score * g.Weight) / totalW : 0;
+                        <tr>
+                            <td class="text-start">@s.StudentName</td>
+                            @foreach (var (type, _) in types)
+                            {
+                                var g = sg.FirstOrDefault(x => x.Type == type);
+                                <td>@(g != null ? g.Score.ToString("F1") : "—")</td>
+                            }
+                            <td class="fw-bold">@(sg.Any() ? avg.ToString("F2") : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

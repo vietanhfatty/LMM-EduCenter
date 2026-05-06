@@ -1,0 +1,70 @@
+@model List<Client.Services.Models.LearningMaterialDto>
+@{
+    ViewData["Title"] = "Tài liệu học";
+    var classes = ViewBag.Classes as List<Client.Services.Models.EnrollmentDto> ?? new();
+    int? selectedClassId = ViewBag.SelectedClassId as int?;
+}
+
+<div class="page-header">
+    <h1>Tài liệu học</h1>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Danh sách tài liệu từ giáo viên</span>
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <select name="classId" class="form-select form-select-sm">
+                <option value="">Tất cả lớp</option>
+                @foreach (var c in classes)
+                {
+                    <option value="@c.ClassId" selected="@(selectedClassId == c.ClassId)">@c.ClassName</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Lọc</button>
+        </form>
+    </div>
+    <div class="card-body">
+        @if (!Model.Any())
+        {
+            <div class="text-muted">Chưa có tài liệu nào cho lớp bạn đang học.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tiêu đề</th>
+                            <th>Lớp</th>
+                            <th>Giáo viên</th>
+                            <th>Ngày gửi</th>
+                            <th>File</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@m.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(m.Description))
+                                    {
+                                        <small class="text-muted">@m.Description</small>
+                                    }
+                                </td>
+                                <td>@m.ClassName</td>
+                                <td>@m.TeacherName</td>
+                                <td>@m.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <a asp-action="Download" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-download me-1"></i>@m.OriginalFileName
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

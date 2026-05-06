@@ -1,0 +1,150 @@
+@using Microsoft.AspNetCore.Http
+@using System.Text.Json
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - LMM Education</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Client.styles.css" asp-append-version="true" />
+</head>
+<body>
+    @{
+        var token = Context.Session.GetString("AuthToken");
+        var isAuth = !string.IsNullOrWhiteSpace(token);
+        string userRole = "";
+        if (isAuth)
+        {
+            var raw = Context.Session.GetString("CurrentUser");
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                using var doc = JsonDocument.Parse(raw);
+                var roles = doc.RootElement.GetProperty("Roles");
+                if (roles.GetArrayLength() > 0)
+                    userRole = roles[0].GetString() ?? "";
+            }
+        }
+        var routeController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+        var routeAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+        var isLoginPage = routeController.Equals("Auth", StringComparison.OrdinalIgnoreCase)
+                          && routeAction.Equals("Login", StringComparison.OrdinalIgnoreCase);
+        var showSidebar = isAuth && !string.IsNullOrEmpty(userRole) && !isLoginPage;
+        var mainClass = showSidebar ? "app-main-content" : "app-main-content app-main-content-full";
+    }
+
+    @if (isLoginPage)
+    {
+        <div class="app-auth-background">
+            <div class="app-auth-glow app-auth-glow-primary"></div>
+            <div class="app-auth-glow app-auth-glow-secondary"></div>
+        </div>
+
+        <main class="app-auth-page">
+            @RenderBody()
+        </main>
+    }
+    else
+    {
+        <div class="app-shell">
+            @if (showSidebar)
+            {
+                <aside class="app-sidebar">
+                    <div class="app-sidebar-brand">
+                        <a class="app-brand" asp-controller="Home" asp-action="Index">
+                            <span class="app-brand-icon">
+                                <i class="bi bi-mortarboard-fill"></i>
+                            </span>
+                            <span>
+                                <span class="app-brand-title">LMM Admin</span>
+                                <small class="app-brand-subtitle">@userRole Portal</small>
+                            </span>
+                        </a>
+                    </div>
+
+                    <nav class="app-sidebar-nav">
+                        <ul class="nav nav-pills flex-column mb-auto">
+                            @if (userRole == "Staff")
+                            {
+                                <partial name="_StaffNav" />
+                            }
+                            else if (userRole == "Teacher")
+                            {
+                                <partial name="_TeacherNav" />
+                            }
+                            else if (userRole == "Student")
+                            {
+                                <partial name="_StudentNav" />
+                            }
+                        </ul>
+                    </nav>
+                </aside>
+            }
+
+            <div class="app-content-wrap">
+                <header class="app-topbar">
+                    <div class="app-topbar-title">@ViewData["Title"]</div>
+                    <div class="app-topbar-right">
+                        @if (isAuth)
+                        {
+                            <a href="#" class="app-notification" id="notification-bell">
+                                <i class="bi bi-bell"></i>
+                                <span id="notification-badge" class="badge rounded-pill bg-danger app-notification-badge" style="display:none;">0</span>
+                            </a>
+                        }
+                        <partial name="_LoginPartial" />
+                    </div>
+                </header>
+
+                <main class="@mainClass">
+                    @if (TempData["Success"] is string success)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show">
+                            @success
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] is string error)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            @error
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @RenderBody()
+                </main>
+            </div>
+        </div>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (isAuth)
+    {
+        <script src="~/lib/microsoft-signalr/dist/browser/signalr.min.js"></script>
+        <script src="~/js/notification-hub.js" asp-append-version="true"></script>
+        <script>
+            NotificationHub.init(
+                "@(Context.RequestServices.GetRequiredService<IConfiguration>()["ApiSettings:BaseUrl"] ?? "http://localhost:5000")",
+                "@token"
+            );
+        </script>
+    }
+    @if (TempData["PopupError"] is string popupError)
+    {
+        <script>
+            window.addEventListener("DOMContentLoaded", function () {
+                const popupMessage = @Html.Raw(JsonSerializer.Serialize(popupError));
+                alert(popupMessage);
+            });
+        </script>
+    }
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

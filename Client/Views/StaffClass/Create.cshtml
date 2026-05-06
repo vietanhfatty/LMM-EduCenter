@@ -1,0 +1,214 @@
+@model Client.Services.Models.CreateClassRequest
+@{
+    ViewData["Title"] = "Thêm lớp học";
+    var courses = ViewBag.Courses as List<Client.Services.Models.CourseDto> ?? new();
+    var rooms = ViewBag.Rooms as List<Client.Services.Models.RoomDto> ?? new();
+    var teachers = ViewBag.Teachers as List<Client.Services.Models.UserDto> ?? new();
+    var minStartDate = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd");
+}
+
+<div class="page-header">
+    <h1>Thêm lớp học mới</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Create" method="post" id="classForm">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tên lớp <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" placeholder="VD: CS101-K1" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Khóa học <span class="text-danger">*</span></label>
+                            <select asp-for="CourseId" class="form-select">
+                                <option value="">-- Chọn khóa học --</option>
+                                @foreach (var c in courses)
+                                {
+                                    <option value="@c.Id">@c.Name (@c.Fee.ToString("N0") VND)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Giáo viên <span class="text-danger">*</span></label>
+                            <select asp-for="TeacherId" class="form-select">
+                                <option value="">-- Chọn giáo viên --</option>
+                                @foreach (var t in teachers.Where(t => t.IsActive))
+                                {
+                                    <option value="@t.Id">@t.FullName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Phòng học <span class="text-danger">*</span></label>
+                            <select asp-for="RoomId" class="form-select">
+                                <option value="">-- Chọn phòng --</option>
+                                @foreach (var r in rooms.Where(r => r.IsActive))
+                                {
+                                    <option value="@r.Id">@r.Name (@r.Capacity chỗ)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-semibold">Ngày bắt đầu</label>
+                            <input asp-for="StartDate" type="date" class="form-control" min="@minStartDate" />
+                            <div class="form-text">Ngày bắt đầu phải cách hiện tại ít nhất 7 ngày.</div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-semibold">Ngày kết thúc</label>
+                            <input asp-for="EndDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-semibold">Sĩ số tối đa</label>
+                            <input asp-for="MaxStudents" type="number" class="form-control" min="1" />
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-semibold">Trạng thái</label>
+                            <select asp-for="Status" class="form-select">
+                                <option value="0">Sắp khai giảng</option>
+                                <option value="1">Đang diễn ra</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr />
+                    <h5 class="mb-3">Lịch học</h5>
+                    <p class="text-muted small mb-2">Ca cố định: Sáng 08:30-10:30, Chiều 13:30-15:30, Chiều tối 16:30-18:30, Tối 19:00-21:00.</p>
+                    <div id="schedules">
+                        <div class="row schedule-row mb-2">
+                            <div class="col-md-4">
+                                <select name="Schedules[0].DayOfWeek" class="form-select">
+                                    <option value="1">Thứ 2</option>
+                                    <option value="2">Thứ 3</option>
+                                    <option value="3">Thứ 4</option>
+                                    <option value="4">Thứ 5</option>
+                                    <option value="5">Thứ 6</option>
+                                    <option value="6">Thứ 7</option>
+                                    <option value="0">Chủ nhật</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select schedule-slot" data-index="0">
+                                    <option value="08:30|10:30">Sáng (08:30 - 10:30)</option>
+                                    <option value="13:30|15:30">Chiều (13:30 - 15:30)</option>
+                                    <option value="16:30|18:30">Chiều tối (16:30 - 18:30)</option>
+                                    <option value="19:00|21:00">Tối (19:00 - 21:00)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control schedule-display" value="08:30 - 10:30" readonly />
+                                <input name="Schedules[0].StartTime" type="hidden" value="08:30" />
+                                <input name="Schedules[0].EndTime" type="hidden" value="10:30" />
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-schedule" style="display:none;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="addSchedule">
+                        <i class="bi bi-plus-lg me-1"></i>Thêm lịch
+                    </button>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let scheduleIndex = 1;
+        document.getElementById('addSchedule').addEventListener('click', function () {
+            const container = document.getElementById('schedules');
+            const row = document.createElement('div');
+            row.className = 'row schedule-row mb-2';
+            row.innerHTML = `
+                <div class="col-md-4">
+                    <select name="Schedules[${scheduleIndex}].DayOfWeek" class="form-select">
+                        <option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option>
+                        <option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option>
+                        <option value="0">Chủ nhật</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select schedule-slot" data-index="${scheduleIndex}">
+                        <option value="08:30|10:30">Sáng (08:30 - 10:30)</option>
+                        <option value="13:30|15:30">Chiều (13:30 - 15:30)</option>
+                        <option value="16:30|18:30">Chiều tối (16:30 - 18:30)</option>
+                        <option value="19:00|21:00">Tối (19:00 - 21:00)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control schedule-display" value="08:30 - 10:30" readonly />
+                    <input name="Schedules[${scheduleIndex}].StartTime" type="hidden" value="08:30" />
+                    <input name="Schedules[${scheduleIndex}].EndTime" type="hidden" value="10:30" />
+                </div>
+                <div class="col-md-2"><button type="button" class="btn btn-outline-danger btn-sm remove-schedule"><i class="bi bi-trash"></i></button></div>`;
+            container.appendChild(row);
+            scheduleIndex++;
+            updateRemoveButtons();
+        });
+
+        document.getElementById('schedules').addEventListener('click', function (e) {
+            if (e.target.closest('.remove-schedule')) {
+                e.target.closest('.schedule-row').remove();
+                reindex();
+                updateRemoveButtons();
+            }
+        });
+
+        document.getElementById('schedules').addEventListener('change', function (e) {
+            const slot = e.target.closest('.schedule-slot');
+            if (!slot) return;
+            syncRowSlot(slot.closest('.schedule-row'));
+        });
+
+        function reindex() {
+            const rows = document.querySelectorAll('.schedule-row');
+            rows.forEach((row, i) => {
+                row.querySelectorAll('[name]').forEach(el => {
+                    el.name = el.name.replace(/\[\d+\]/, `[${i}]`);
+                });
+                syncRowSlot(row);
+            });
+            scheduleIndex = rows.length;
+        }
+
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.schedule-row');
+            rows.forEach((row, i) => {
+                const btn = row.querySelector('.remove-schedule');
+                if (btn) btn.style.display = rows.length > 1 ? '' : 'none';
+            });
+        }
+
+        function syncRowSlot(row) {
+            const slot = row.querySelector('.schedule-slot');
+            const display = row.querySelector('.schedule-display');
+            const startInput = row.querySelector('input[name$=".StartTime"]');
+            const endInput = row.querySelector('input[name$=".EndTime"]');
+            if (!slot || !display || !startInput || !endInput) return;
+            const [start, end] = slot.value.split('|');
+            startInput.value = start;
+            endInput.value = end;
+            display.value = `${start} - ${end}`;
+        }
+
+        document.querySelectorAll('.schedule-row').forEach(syncRowSlot);
+    </script>
+}

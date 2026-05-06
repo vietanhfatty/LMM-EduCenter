@@ -1,0 +1,63 @@
+@using Microsoft.AspNetCore.Http
+@using System.Text.Json
+@{
+    var token = Context.Session.GetString("AuthToken");
+    var isAuth = !string.IsNullOrWhiteSpace(token);
+    string userName = "";
+    string userRole = "";
+    string? userAvatar = null;
+    if (isAuth)
+    {
+        var raw = Context.Session.GetString("CurrentUser");
+        if (!string.IsNullOrWhiteSpace(raw))
+        {
+            using var doc = JsonDocument.Parse(raw);
+            userName = doc.RootElement.GetProperty("FullName").GetString() ?? "";
+            if (doc.RootElement.TryGetProperty("Avatar", out var avatarProp))
+                userAvatar = avatarProp.GetString();
+            var roles = doc.RootElement.GetProperty("Roles");
+            if (roles.GetArrayLength() > 0)
+                userRole = roles[0].GetString() ?? "";
+        }
+    }
+
+    var defaultAvatar = userRole switch
+    {
+        "Staff" => Url.Content("~/images/avatars/staff.svg"),
+        "Teacher" => Url.Content("~/images/avatars/teacher.svg"),
+        "Student" => Url.Content("~/images/avatars/student.svg"),
+        _ => Url.Content("~/images/avatars/user.svg")
+    };
+    var avatarUrl = !string.IsNullOrWhiteSpace(userAvatar) ? userAvatar! : defaultAvatar;
+    if (!string.IsNullOrWhiteSpace(userAvatar)
+        && !userAvatar.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        && !userAvatar.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        && !userAvatar.StartsWith("/"))
+    {
+        avatarUrl = Url.Content(userAvatar);
+    }
+}
+
+@if (!isAuth)
+{
+    <a class="btn btn-primary btn-sm px-3" asp-controller="Auth" asp-action="Login">Đăng nhập</a>
+}
+else
+{
+    <div class="dropdown">
+        <a class="d-flex align-items-center text-decoration-none dropdown-toggle app-user-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
+            <div class="rounded-circle d-flex align-items-center justify-content-center me-2 app-user-avatar app-user-avatar-wrap">
+                <img src="@avatarUrl" alt="Avatar @userRole" class="app-user-avatar-image" />
+            </div>
+            <div class="d-none d-md-block">
+                <div class="fw-semibold lh-sm app-user-name">@userName</div>
+                <div class="app-user-role">@userRole</div>
+            </div>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+            <li><a class="dropdown-item" asp-controller="Auth" asp-action="Profile"><i class="bi bi-person me-2"></i>Profile</a></li>
+            <li><hr class="dropdown-divider" /></li>
+            <li><a class="dropdown-item text-danger" asp-controller="Auth" asp-action="Logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
+        </ul>
+    </div>
+}

@@ -1,0 +1,59 @@
+@model Client.Services.Models.UpdateUserRequest
+@{
+    ViewData["Title"] = "Sửa giáo viên";
+    var userId = (string)ViewBag.UserId;
+    var email = ViewBag.Email as string ?? "";
+}
+
+<div class="page-header">
+    <h1>Sửa thông tin giáo viên</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <input class="form-control" value="@email" disabled />
+                </div>
+
+                <form asp-action="Edit" asp-route-id="@userId" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Họ tên <span class="text-danger">*</span></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Điện thoại</label>
+                            <input asp-for="Phone" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Ngày sinh</label>
+                            <input asp-for="DateOfBirth" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Địa chỉ</label>
+                            <input asp-for="Address" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Cập nhật</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

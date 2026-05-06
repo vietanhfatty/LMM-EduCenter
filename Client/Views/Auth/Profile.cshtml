@@ -1,0 +1,118 @@
+@model Client.ViewModels.Auth.ProfileViewModel
+@{
+    ViewData["Title"] = "Profile";
+}
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Thông tin cá nhân</h2>
+
+                <form asp-action="Profile" method="post" enctype="multipart/form-data">
+                    <input asp-for="Id" type="hidden" />
+                    <input asp-for="Email" type="hidden" />
+                    <input asp-for="IsActive" type="hidden" />
+                    <input asp-for="Avatar" type="hidden" />
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input value="@Model.Email" class="form-control" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="FullName" class="form-label"></label>
+                        <input asp-for="FullName" class="form-control" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Phone" class="form-label"></label>
+                        <input asp-for="Phone" class="form-control" />
+                        <span asp-validation-for="Phone" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="DateOfBirth" class="form-label"></label>
+                        <input asp-for="DateOfBirth" type="date" class="form-control" />
+                        <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Address" class="form-label"></label>
+                        <input asp-for="Address" class="form-control" />
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ảnh đại diện hiện tại</label>
+                        <div class="d-flex align-items-center gap-3">
+                            @if (!string.IsNullOrWhiteSpace(Model.Avatar))
+                            {
+                                <img src="@Model.Avatar" alt="Avatar" style="width:60px;height:60px;border-radius:999px;object-fit:cover;" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">Chưa có ảnh</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="AvatarFile" class="form-label">Upload ảnh đại diện</label>
+                        <input asp-for="AvatarFile" type="file" class="form-control" accept="image/*" />
+                        <span asp-validation-for="AvatarFile" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Cập nhật profile</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h6 mb-3">Thông tin đăng nhập</h2>
+                <p class="mb-2"><strong>Trạng thái:</strong> @(Model.IsActive ? "Đang hoạt động" : "Đã khóa")</p>
+                <p class="mb-0"><strong>Roles:</strong> @string.Join(", ", Model.Roles)</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h6 mb-3">Đổi mật khẩu</h2>
+                <form asp-action="ChangePassword" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Mật khẩu hiện tại</label>
+                        <input type="password" name="CurrentPassword" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mật khẩu mới</label>
+                        <input type="password" name="NewPassword" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Xác nhận mật khẩu mới</label>
+                        <input type="password" name="ConfirmPassword" class="form-control" />
+                    </div>
+                    <button type="submit" class="btn btn-outline-secondary">Đổi mật khẩu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,69 @@
+@{
+    ViewData["Title"] = "Nhập điểm";
+    var classInfo = ViewBag.ClassInfo as Client.Services.Models.ClassDto;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Nhập điểm: @classInfo?.Name</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Enter" asp-route-id="@classInfo?.Id" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ClassId" value="@classInfo?.Id" />
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Loại điểm</label>
+                    <select name="Type" class="form-select">
+                        <option value="0">Quiz</option>
+                        <option value="1">Giữa kỳ</option>
+                        <option value="2">Cuối kỳ</option>
+                        <option value="3">Bài tập</option>
+                        <option value="4">Tham gia</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Trọng số</label>
+                    <input type="number" name="Weight" value="1" step="0.1" min="0.1" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Mô tả</label>
+                    <input type="text" name="Description" class="form-control" placeholder="VD: Kiểm tra lần 1" />
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead><tr><th>#</th><th>Học viên</th><th>Điểm (0-10)</th></tr></thead>
+                    <tbody id="grade-body"></tbody>
+                </table>
+            </div>
+
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Lưu điểm</button>
+        </form>
+
+        <script>
+            var classId = @classInfo?.Id;
+            var token = '@Context.Session.GetString("AuthToken")';
+            var apiBase = '@(Context.RequestServices.GetRequiredService<IConfiguration>()["ApiSettings:BaseUrl"] ?? "http://localhost:5000")';
+
+            fetch(apiBase + '/api/classes/' + classId + '/students', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(r => r.json())
+            .then(students => {
+                var body = document.getElementById('grade-body');
+                students.forEach(function(s, idx) {
+                    body.innerHTML += '<tr>' +
+                        '<td>' + (idx+1) + '</td>' +
+                        '<td>' + s.fullName + '<input type="hidden" name="Items['+idx+'].StudentId" value="'+s.id+'" /></td>' +
+                        '<td><input type="number" name="Items['+idx+'].Score" value="0" min="0" max="10" step="0.1" class="form-control" style="width:100px;" /></td>' +
+                        '</tr>';
+                });
+            });
+        </script>
+    </div>
+</div>

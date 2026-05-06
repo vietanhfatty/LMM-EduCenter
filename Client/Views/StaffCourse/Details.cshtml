@@ -1,0 +1,57 @@
+@model Client.Services.Models.CourseDto
+@{
+    ViewData["Title"] = "Chi tiết khóa học";
+}
+
+<div class="page-header">
+    <h1>Chi tiết khóa học</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">
+            <i class="bi bi-pencil me-1"></i>Sửa
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Tên khóa học</dt>
+                    <dd class="col-sm-8 fw-semibold">@Model.Name</dd>
+
+                    <dt class="col-sm-4">Mô tả</dt>
+                    <dd class="col-sm-8">@(Model.Description ?? "—")</dd>
+
+                    <dt class="col-sm-4">Học phí</dt>
+                    <dd class="col-sm-8 text-primary fw-semibold">@Model.Fee.ToString("N0") VND</dd>
+
+                    <dt class="col-sm-4">Thời lượng</dt>
+                    <dd class="col-sm-8">@Model.DurationInHours giờ</dd>
+
+                    <dt class="col-sm-4">Số lớp học</dt>
+                    <dd class="col-sm-8">@Model.ClassCount</dd>
+
+                    <dt class="col-sm-4">Số môn học</dt>
+                    <dd class="col-sm-8">@Model.SubjectCount</dd>
+
+                    <dt class="col-sm-4">Trạng thái</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success badge-status">Hoạt động</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary badge-status">Ẩn</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">Ngày tạo</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,964 @@
+@using System.Text.Json
+@model Client.Services.Models.CreatePaymentRequest
+@{
+    ViewData["Title"] = "Ghi nhận thanh toán";
+    var students = ViewBag.Students as List<Client.Services.Models.UserDto> ?? new();
+    var enrollments = ViewBag.Enrollments as List<Client.Services.Models.EnrollmentDto> ?? new();
+    var debts = ViewBag.Debts as List<Client.Services.Models.DebtDto> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Ghi nhận thanh toán</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Học viên</label>
+                    <div class="position-relative">
+                        <input type="text" id="studentInput" class="form-control" placeholder="Tìm học viên theo tên hoặc email..." autocomplete="off" />
+                        <input asp-for="StudentId" id="studentIdValue" type="hidden" />
+                        <div id="studentSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="studentError">Vui lòng chọn học viên từ danh sách gợi ý.</div>
+                    <div id="studentDebtSummary" class="alert alert-info mt-2 mb-0 d-none py-2"></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Lớp học</label>
+                    <div class="position-relative">
+                        <input type="text" id="classInput" class="form-control" placeholder="Chọn học viên trước, sau đó tìm lớp..." autocomplete="off" />
+                        <input asp-for="ClassId" id="classIdValue" type="hidden" />
+                        <div id="classSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="classError">Vui lòng chọn lớp từ danh sách gợi ý.</div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Số tiền (VND)</label>
+                    <input asp-for="Amount" id="amountInput" type="number" class="form-control" min="0" step="1000" />
+                    <div class="form-text" id="amountHint">Chọn lớp để xem số tiền còn lại cần đóng.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Phương thức</label>
+                    <select asp-for="Method" class="form-select">
+                        <option value="0">Tiền mặt</option>
+                    </select>
+                    <div class="form-text">Staff ghi nhận thu trực tiếp tại trung tâm.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Ghi chú</label>
+                    <input asp-for="Note" class="form-control" />
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Ghi nhận</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const studentItems = @Html.Raw(JsonSerializer.Serialize(
+        students.Where(s => s.IsActive).Select(s => new { id = s.Id, label = `${s.FullName} (${s.Email})` })));
+
+    const enrollmentItems = @Html.Raw(JsonSerializer.Serialize(
+        enrollments.Select(e => new { studentId = e.StudentId, classId = e.ClassId, classLabel = `${e.ClassName} - ${e.CourseName}` })));
+
+    const debtItems = @Html.Raw(JsonSerializer.Serialize(
+        debts.Select(d => new { studentId = d.StudentId, classId = d.ClassId, remaining = d.Remaining })));
+
+    const classItems = Object.values(
+        enrollmentItems.reduce((acc, item) => {
+            if (!acc[item.classId]) acc[item.classId] = { id: item.classId, label: item.classLabel };
+            return acc;
+        }, {})
+    );
+
+    const studentClassMap = enrollmentItems.reduce((acc, item) => {
+        if (!acc[item.studentId]) acc[item.studentId] = [];
+        if (!acc[item.studentId].includes(item.classId)) acc[item.studentId].push(item.classId);
+        return acc;
+    }, {});
+
+    const debtMap = debtItems.reduce((acc, item) => {
+        acc[`${item.studentId}_${item.classId}`] = Number(item.remaining);
+        return acc;
+    }, {});
+
+    const studentId = document.getElementById("studentIdValue");
+    const classId = document.getElementById("classIdValue");
+    const classInput = document.getElementById("classInput");
+    const amountInput = document.getElementById("amountInput");
+    const amountHint = document.getElementById("amountHint");
+    const studentDebtSummary = document.getElementById("studentDebtSummary");
+
+    function formatVnd(value) {
+        return Number(value || 0).toLocaleString("vi-VN");
+    }
+
+    function setupAutocomplete(inputId, hiddenId, suggestionsId, getItems, emptyMessage, onSelected) {
+        const input = document.getElementById(inputId);
+        const hidden = document.getElementById(hiddenId);
+        const suggestions = document.getElementById(suggestionsId);
+        if (!input || !hidden || !suggestions) return;
+
+        function hideSuggestions() {
+            suggestions.classList.add("d-none");
+            suggestions.innerHTML = "";
+        }
+
+        function render(keyword) {
+            const normalized = (keyword || "").trim().toLowerCase();
+            const items = getItems();
+            if (!items.length) {
+                suggestions.innerHTML = "<div class='list-group-item text-muted small'>Không có dữ liệu phù hợp.</div>";
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            const matched = items.filter(x => !normalized || x.label.toLowerCase().includes(normalized)).slice(0, 20);
+            if (!matched.length) {
+                suggestions.innerHTML = `<div class='list-group-item text-muted small'>${emptyMessage}</div>`;
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            suggestions.innerHTML = "";
+            matched.forEach(item => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "list-group-item list-group-item-action";
+                button.textContent = item.subtitle ? `${item.label} (${item.subtitle})` : item.label;
+                button.addEventListener("mousedown", e => {
+                    e.preventDefault();
+                    input.value = item.label;
+                    hidden.value = item.id;
+                    if (inputId === "studentInput") document.getElementById("studentError")?.classList.add("d-none");
+                    if (inputId === "classInput") document.getElementById("classError")?.classList.add("d-none");
+                    hideSuggestions();
+                    if (onSelected) onSelected(item);
+                });
+                suggestions.appendChild(button);
+            });
+            suggestions.classList.remove("d-none");
+        }
+
+        input.addEventListener("focus", () => render(input.value));
+        input.addEventListener("input", () => {
+            hidden.value = "";
+            if (inputId === "studentInput" && onSelected) onSelected(null);
+            render(input.value);
+        });
+        input.addEventListener("blur", () => setTimeout(hideSuggestions, 120));
+    }
+
+    function updateDebtSummary() {
+        if (!studentId.value) {
+            studentDebtSummary.classList.add("d-none");
+            studentDebtSummary.textContent = "";
+            return;
+        }
+
+        const rows = debtItems.filter(x => x.studentId === studentId.value && Number(x.remaining) > 0);
+        const total = rows.reduce((sum, x) => sum + Number(x.remaining), 0);
+        studentDebtSummary.classList.remove("d-none");
+        studentDebtSummary.innerHTML = rows.length
+            ? `<strong>Tổng công nợ còn lại:</strong> ${formatVnd(total)} VND (${rows.length} lớp).`
+            : "<strong>Học viên này hiện không còn công nợ.</strong>";
+    }
+
+    function updateAmountByClass() {
+        if (!studentId.value || !classId.value) {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Chọn lớp để xem số tiền còn lại cần đóng.";
+            return;
+        }
+
+        const remaining = Number(debtMap[`${studentId.value}_${classId.value}`] || 0);
+        if (remaining > 0) {
+            amountInput.max = String(remaining);
+            amountHint.textContent = `Số tiền còn lại của lớp: ${formatVnd(remaining)} VND.`;
+        } else {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Lớp này đã đủ học phí.";
+        }
+    }
+
+    setupAutocomplete(
+        "studentInput", "studentIdValue", "studentSuggestions",
+        () => studentItems,
+        "Không tìm thấy học viên phù hợp.",
+        () => {
+            classInput.value = "";
+            classId.value = "";
+            updateDebtSummary();
+            updateAmountByClass();
+        }
+    );
+
+    setupAutocomplete(
+        "classInput", "classIdValue", "classSuggestions",
+        () => {
+            if (!studentId.value) return classItems;
+            const ids = studentClassMap[studentId.value] ?? [];
+            return classItems
+                .filter(x => ids.includes(x.id))
+                .map(x => ({ ...x, subtitle: `Còn ${formatVnd(debtMap[`${studentId.value}_${x.id}`] || 0)} VND` }));
+        },
+        "Không tìm thấy lớp phù hợp với học viên đã chọn.",
+        () => updateAmountByClass()
+    );
+
+    document.querySelector("form")?.addEventListener("submit", e => {
+        let isValid = true;
+        if (!studentId.value) {
+            document.getElementById("studentError")?.classList.remove("d-none");
+            isValid = false;
+        }
+        if (!classId.value) {
+            document.getElementById("classError")?.classList.remove("d-none");
+            isValid = false;
+        }
+        const maxAmount = Number(amountInput.max || 0);
+        const enteredAmount = Number(amountInput.value || 0);
+        if (maxAmount > 0 && enteredAmount > maxAmount) {
+            amountHint.textContent = `Số tiền vượt quá phần còn lại (${formatVnd(maxAmount)} VND).`;
+            isValid = false;
+        }
+        if (!isValid) e.preventDefault();
+    });
+</script>
+}
+@model Client.Services.Models.CreatePaymentRequest
+@{
+    ViewData["Title"] = "Ghi nhận thanh toán";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Ghi nhận thanh toán</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Quay lại</a>
+</div>
+
+<div class="alert alert-info">
+    Màn tạo thanh toán đang dùng view `CreateFixed`.
+</div>
+@model Client.Services.Models.CreatePaymentRequest
+<h1>Create Payment Test</h1>
+@using System.Text.Json
+@model Client.Services.Models.CreatePaymentRequest
+@{
+    ViewData["Title"] = "Ghi nhận thanh toán";
+    var students = ViewBag.Students as List<Client.Services.Models.UserDto> ?? new();
+    var enrollments = ViewBag.Enrollments as List<Client.Services.Models.EnrollmentDto> ?? new();
+    var debts = ViewBag.Debts as List<Client.Services.Models.DebtDto> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Ghi nhận thanh toán</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Học viên</label>
+                    <div class="position-relative">
+                        <input type="text" id="studentInput" class="form-control" placeholder="Tìm học viên theo tên hoặc email..." autocomplete="off" />
+                        <input asp-for="StudentId" id="studentIdValue" type="hidden" />
+                        <div id="studentSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="studentError">Vui lòng chọn học viên từ danh sách gợi ý.</div>
+                    <div id="studentDebtSummary" class="alert alert-info mt-2 mb-0 d-none py-2"></div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Lớp học</label>
+                    <div class="position-relative">
+                        <input type="text" id="classInput" class="form-control" placeholder="Chọn học viên trước, sau đó tìm lớp..." autocomplete="off" />
+                        <input asp-for="ClassId" id="classIdValue" type="hidden" />
+                        <div id="classSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="classError">Vui lòng chọn lớp từ danh sách gợi ý.</div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Số tiền (VND)</label>
+                    <input asp-for="Amount" id="amountInput" type="number" class="form-control" min="0" step="1000" />
+                    <div class="form-text" id="amountHint">Chọn lớp để xem số tiền còn lại cần đóng.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Phương thức</label>
+                    <select asp-for="Method" class="form-select">
+                        <option value="0">Tiền mặt</option>
+                    </select>
+                    <div class="form-text">Staff ghi nhận thu trực tiếp tại trung tâm.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Ghi chú</label>
+                    <input asp-for="Note" class="form-control" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Ghi nhận</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const studentItems = @Html.Raw(JsonSerializer.Serialize(
+        students.Where(s => s.IsActive).Select(s => new { id = s.Id, label = `${s.FullName} (${s.Email})` })));
+
+    const enrollmentItems = @Html.Raw(JsonSerializer.Serialize(
+        enrollments.Select(e => new { studentId = e.StudentId, classId = e.ClassId, classLabel = `${e.ClassName} - ${e.CourseName}` })));
+
+    const debtItems = @Html.Raw(JsonSerializer.Serialize(
+        debts.Select(d => new { studentId = d.StudentId, classId = d.ClassId, remaining = d.Remaining })));
+
+    const classItems = Object.values(
+        enrollmentItems.reduce((acc, item) => {
+            if (!acc[item.classId]) acc[item.classId] = { id: item.classId, label: item.classLabel };
+            return acc;
+        }, {})
+    );
+
+    const studentClassMap = enrollmentItems.reduce((acc, item) => {
+        if (!acc[item.studentId]) acc[item.studentId] = [];
+        if (!acc[item.studentId].includes(item.classId)) acc[item.studentId].push(item.classId);
+        return acc;
+    }, {});
+
+    const debtMap = debtItems.reduce((acc, item) => {
+        acc[`${item.studentId}_${item.classId}`] = Number(item.remaining);
+        return acc;
+    }, {});
+
+    const studentInput = document.getElementById("studentInput");
+    const studentId = document.getElementById("studentIdValue");
+    const classInput = document.getElementById("classInput");
+    const classId = document.getElementById("classIdValue");
+    const amountInput = document.getElementById("amountInput");
+    const amountHint = document.getElementById("amountHint");
+    const studentDebtSummary = document.getElementById("studentDebtSummary");
+
+    function formatVnd(value) {
+        return Number(value || 0).toLocaleString("vi-VN");
+    }
+
+    function setupAutocomplete(inputId, hiddenId, suggestionsId, getItems, emptyMessage, onSelected) {
+        const input = document.getElementById(inputId);
+        const hidden = document.getElementById(hiddenId);
+        const suggestions = document.getElementById(suggestionsId);
+        if (!input || !hidden || !suggestions) return;
+
+        function hideSuggestions() {
+            suggestions.classList.add("d-none");
+            suggestions.innerHTML = "";
+        }
+
+        function render(keyword) {
+            const normalized = (keyword || "").trim().toLowerCase();
+            const items = getItems();
+
+            if (!items.length) {
+                suggestions.innerHTML = "<div class='list-group-item text-muted small'>Không có dữ liệu phù hợp.</div>";
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            const matched = items.filter(x => !normalized || x.label.toLowerCase().includes(normalized)).slice(0, 20);
+            if (!matched.length) {
+                suggestions.innerHTML = `<div class='list-group-item text-muted small'>${emptyMessage}</div>`;
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            suggestions.innerHTML = "";
+            matched.forEach(item => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "list-group-item list-group-item-action";
+                button.textContent = item.subtitle ? `${item.label} (${item.subtitle})` : item.label;
+                button.addEventListener("mousedown", e => {
+                    e.preventDefault();
+                    input.value = item.label;
+                    hidden.value = item.id;
+                    if (inputId === "studentInput") document.getElementById("studentError")?.classList.add("d-none");
+                    if (inputId === "classInput") document.getElementById("classError")?.classList.add("d-none");
+                    hideSuggestions();
+                    if (onSelected) onSelected(item);
+                });
+                suggestions.appendChild(button);
+            });
+
+            suggestions.classList.remove("d-none");
+        }
+
+        input.addEventListener("focus", () => render(input.value));
+        input.addEventListener("input", () => {
+            hidden.value = "";
+            if (inputId === "studentInput" && onSelected) onSelected(null);
+            render(input.value);
+        });
+        input.addEventListener("blur", () => setTimeout(hideSuggestions, 120));
+    }
+
+    function updateDebtSummary() {
+        if (!studentId.value) {
+            studentDebtSummary.classList.add("d-none");
+            studentDebtSummary.textContent = "";
+            return;
+        }
+
+        const rows = debtItems.filter(x => x.studentId === studentId.value && Number(x.remaining) > 0);
+        const total = rows.reduce((sum, x) => sum + Number(x.remaining), 0);
+        studentDebtSummary.classList.remove("d-none");
+        studentDebtSummary.innerHTML = rows.length
+            ? `<strong>Tổng công nợ còn lại:</strong> ${formatVnd(total)} VND (${rows.length} lớp).`
+            : "<strong>Học viên này hiện không còn công nợ.</strong>";
+    }
+
+    function updateAmountByClass() {
+        if (!studentId.value || !classId.value) {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Chọn lớp để xem số tiền còn lại cần đóng.";
+            return;
+        }
+
+        const remaining = Number(debtMap[`${studentId.value}_${classId.value}`] || 0);
+        if (remaining > 0) {
+            amountInput.max = String(remaining);
+            amountHint.textContent = `Số tiền còn lại của lớp: ${formatVnd(remaining)} VND.`;
+        } else {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Lớp này đã đủ học phí.";
+        }
+    }
+
+    setupAutocomplete(
+        "studentInput",
+        "studentIdValue",
+        "studentSuggestions",
+        () => studentItems,
+        "Không tìm thấy học viên phù hợp.",
+        () => {
+            classInput.value = "";
+            classId.value = "";
+            updateDebtSummary();
+            updateAmountByClass();
+        }
+    );
+
+    setupAutocomplete(
+        "classInput",
+        "classIdValue",
+        "classSuggestions",
+        () => {
+            if (!studentId.value) return classItems;
+            const ids = studentClassMap[studentId.value] ?? [];
+            return classItems
+                .filter(x => ids.includes(x.id))
+                .map(x => ({ ...x, subtitle: `Còn ${formatVnd(debtMap[`${studentId.value}_${x.id}`] || 0)} VND` }));
+        },
+        "Không tìm thấy lớp phù hợp với học viên đã chọn.",
+        () => updateAmountByClass()
+    );
+
+    document.querySelector("form")?.addEventListener("submit", e => {
+        let isValid = true;
+        if (!studentId.value) {
+            document.getElementById("studentError")?.classList.remove("d-none");
+            isValid = false;
+        }
+        if (!classId.value) {
+            document.getElementById("classError")?.classList.remove("d-none");
+            isValid = false;
+        }
+        const maxAmount = Number(amountInput.max || 0);
+        const enteredAmount = Number(amountInput.value || 0);
+        if (maxAmount > 0 && enteredAmount > maxAmount) {
+            amountHint.textContent = `Số tiền vượt quá phần còn lại (${formatVnd(maxAmount)} VND).`;
+            isValid = false;
+        }
+        if (!isValid) e.preventDefault();
+    });
+</script>
+}
+@using System.Text.Json
+@model Client.Services.Models.CreatePaymentRequest
+@{
+    ViewData["Title"] = "Ghi nhận thanh toán";
+    var students = ViewBag.Students as List<Client.Services.Models.UserDto> ?? new();
+    var enrollments = ViewBag.Enrollments as List<Client.Services.Models.EnrollmentDto> ?? new();
+    var debts = ViewBag.Debts as List<Client.Services.Models.DebtDto> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Ghi nhận thanh toán</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Học viên</label>
+                    <div class="position-relative">
+                        <input type="text" id="studentInput" class="form-control" placeholder="Tìm học viên theo tên hoặc email..." autocomplete="off" />
+                        <input asp-for="StudentId" id="studentIdValue" type="hidden" />
+                        <div id="studentSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="studentError">Vui lòng chọn học viên từ danh sách gợi ý.</div>
+                    <div id="studentDebtSummary" class="alert alert-info mt-2 mb-0 d-none py-2"></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Lớp học</label>
+                    <div class="position-relative">
+                        <input type="text" id="classInput" class="form-control" placeholder="Chọn học viên trước, sau đó tìm lớp..." autocomplete="off" />
+                        <input asp-for="ClassId" id="classIdValue" type="hidden" />
+                        <div id="classSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="classError">Vui lòng chọn lớp từ danh sách gợi ý.</div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Số tiền (VND)</label>
+                    <input asp-for="Amount" id="amountInput" type="number" class="form-control" min="0" step="1000" />
+                    <div class="form-text" id="amountHint">Chọn lớp để xem số tiền còn lại cần đóng.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Phương thức</label>
+                    <select asp-for="Method" class="form-select">
+                        <option value="0">Tiền mặt</option>
+                    </select>
+                    <div class="form-text">Staff ghi nhận thu trực tiếp tại trung tâm.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Ghi chú</label>
+                    <input asp-for="Note" class="form-control" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Ghi nhận</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const studentItems = @Html.Raw(JsonSerializer.Serialize(
+        students.Where(s => s.IsActive).Select(s => new { id = s.Id, label = `${s.FullName} (${s.Email})` })));
+    const enrollmentItems = @Html.Raw(JsonSerializer.Serialize(
+        enrollments.Select(e => new { studentId = e.StudentId, classId = e.ClassId, classLabel = `${e.ClassName} - ${e.CourseName}` })));
+    const debtItems = @Html.Raw(JsonSerializer.Serialize(
+        debts.Select(d => new { studentId = d.StudentId, classId = d.ClassId, remaining = d.Remaining })));
+
+    const classItems = Object.values(
+        enrollmentItems.reduce((acc, item) => {
+            if (!acc[item.classId]) acc[item.classId] = { id: item.classId, label: item.classLabel };
+            return acc;
+        }, {})
+    );
+
+    const studentClassMap = enrollmentItems.reduce((acc, item) => {
+        if (!acc[item.studentId]) acc[item.studentId] = [];
+        if (!acc[item.studentId].includes(item.classId)) acc[item.studentId].push(item.classId);
+        return acc;
+    }, {});
+
+    const debtMap = debtItems.reduce((acc, item) => {
+        acc[`${item.studentId}_${item.classId}`] = Number(item.remaining);
+        return acc;
+    }, {});
+
+    const studentInput = document.getElementById("studentInput");
+    const studentId = document.getElementById("studentIdValue");
+    const classInput = document.getElementById("classInput");
+    const classId = document.getElementById("classIdValue");
+    const amountInput = document.getElementById("amountInput");
+    const amountHint = document.getElementById("amountHint");
+    const studentDebtSummary = document.getElementById("studentDebtSummary");
+
+    function formatVnd(value) { return Number(value || 0).toLocaleString("vi-VN"); }
+
+    function setupAutocomplete(inputId, hiddenId, suggestionsId, getItems, emptyMessage, onSelected) {
+        const input = document.getElementById(inputId);
+        const hidden = document.getElementById(hiddenId);
+        const suggestions = document.getElementById(suggestionsId);
+        if (!input || !hidden || !suggestions) return;
+
+        function hideSuggestions() {
+            suggestions.classList.add("d-none");
+            suggestions.innerHTML = "";
+        }
+
+        function render(keyword) {
+            const normalized = (keyword || "").trim().toLowerCase();
+            const items = getItems();
+            if (!items.length) {
+                suggestions.innerHTML = "<div class='list-group-item text-muted small'>Không có dữ liệu phù hợp.</div>";
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            const matched = items.filter(x => !normalized || x.label.toLowerCase().includes(normalized)).slice(0, 20);
+            if (!matched.length) {
+                suggestions.innerHTML = `<div class='list-group-item text-muted small'>${emptyMessage}</div>`;
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            suggestions.innerHTML = "";
+            matched.forEach(item => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "list-group-item list-group-item-action";
+                button.textContent = item.subtitle ? `${item.label} (${item.subtitle})` : item.label;
+                button.addEventListener("mousedown", e => {
+                    e.preventDefault();
+                    input.value = item.label;
+                    hidden.value = item.id;
+                    if (inputId === "studentInput") document.getElementById("studentError")?.classList.add("d-none");
+                    if (inputId === "classInput") document.getElementById("classError")?.classList.add("d-none");
+                    hideSuggestions();
+                    onSelected?.(item);
+                });
+                suggestions.appendChild(button);
+            });
+
+            suggestions.classList.remove("d-none");
+        }
+
+        input.addEventListener("focus", () => render(input.value));
+        input.addEventListener("input", () => {
+            hidden.value = "";
+            if (inputId === "studentInput") onSelected?.(null);
+            render(input.value);
+        });
+        input.addEventListener("blur", () => setTimeout(hideSuggestions, 120));
+    }
+
+    function updateDebtSummary() {
+        if (!studentId.value) {
+            studentDebtSummary.classList.add("d-none");
+            studentDebtSummary.textContent = "";
+            return;
+        }
+        const rows = debtItems.filter(x => x.studentId === studentId.value && Number(x.remaining) > 0);
+        const total = rows.reduce((sum, x) => sum + Number(x.remaining), 0);
+        studentDebtSummary.classList.remove("d-none");
+        studentDebtSummary.innerHTML = rows.length
+            ? `<strong>Tổng công nợ còn lại:</strong> ${formatVnd(total)} VND (${rows.length} lớp).`
+            : "<strong>Học viên này hiện không còn công nợ.</strong>";
+    }
+
+    function updateAmountByClass() {
+        if (!studentId.value || !classId.value) {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Chọn lớp để xem số tiền còn lại cần đóng.";
+            return;
+        }
+        const remaining = Number(debtMap[`${studentId.value}_${classId.value}`] || 0);
+        if (remaining > 0) {
+            amountInput.max = String(remaining);
+            amountHint.textContent = `Số tiền còn lại của lớp: ${formatVnd(remaining)} VND.`;
+        } else {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Lớp này đã đủ học phí.";
+        }
+    }
+
+    function clearClassSelection() {
+        classInput.value = "";
+        classId.value = "";
+        updateAmountByClass();
+    }
+
+    setupAutocomplete(
+        "studentInput", "studentIdValue", "studentSuggestions",
+        () => studentItems,
+        "Không tìm thấy học viên phù hợp.",
+        () => { clearClassSelection(); updateDebtSummary(); }
+    );
+
+    setupAutocomplete(
+        "classInput", "classIdValue", "classSuggestions",
+        () => {
+            if (!studentId.value) return classItems;
+            const allowedClassIds = studentClassMap[studentId.value] ?? [];
+            return classItems
+                .filter(x => allowedClassIds.includes(x.id))
+                .map(x => ({ ...x, subtitle: `Còn ${formatVnd(debtMap[`${studentId.value}_${x.id}`] || 0)} VND` }));
+        },
+        "Không tìm thấy lớp phù hợp với học viên đã chọn.",
+        () => updateAmountByClass()
+    );
+
+    document.querySelector("form")?.addEventListener("submit", function (e) {
+        let isValid = true;
+        if (!studentId.value) { document.getElementById("studentError")?.classList.remove("d-none"); isValid = false; }
+        if (!classId.value) { document.getElementById("classError")?.classList.remove("d-none"); isValid = false; }
+        const maxAmount = Number(amountInput.max || 0);
+        const enteredAmount = Number(amountInput.value || 0);
+        if (maxAmount > 0 && enteredAmount > maxAmount) {
+            amountHint.textContent = `Số tiền vượt quá phần còn lại (${formatVnd(maxAmount)} VND).`;
+            isValid = false;
+        }
+        if (!isValid) e.preventDefault();
+    });
+</script>
+}
+@using System.Text.Json
+@model Client.Services.Models.CreatePaymentRequest
+@{
+    ViewData["Title"] = "Ghi nhận thanh toán";
+    var students = ViewBag.Students as List<Client.Services.Models.UserDto> ?? new();
+    var enrollments = ViewBag.Enrollments as List<Client.Services.Models.EnrollmentDto> ?? new();
+    var debts = ViewBag.Debts as List<Client.Services.Models.DebtDto> ?? new();
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Ghi nhận thanh toán</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Học viên</label>
+                    <div class="position-relative">
+                        <input type="text" id="studentInput" class="form-control" placeholder="Tìm học viên theo tên hoặc email..." autocomplete="off" />
+                        <input asp-for="StudentId" id="studentIdValue" type="hidden" />
+                        <div id="studentSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="studentError">Vui lòng chọn học viên từ danh sách gợi ý.</div>
+                    <div id="studentDebtSummary" class="alert alert-info mt-2 mb-0 d-none py-2"></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Lớp học</label>
+                    <div class="position-relative">
+                        <input type="text" id="classInput" class="form-control" placeholder="Chọn học viên trước, sau đó tìm lớp..." autocomplete="off" />
+                        <input asp-for="ClassId" id="classIdValue" type="hidden" />
+                        <div id="classSuggestions" class="list-group position-absolute w-100 d-none shadow-sm" style="z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="invalid-feedback d-block d-none" id="classError">Vui lòng chọn lớp từ danh sách gợi ý.</div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Số tiền (VND)</label>
+                    <input asp-for="Amount" id="amountInput" type="number" class="form-control" min="0" step="1000" />
+                    <div class="form-text" id="amountHint">Chọn lớp để xem số tiền còn lại cần đóng.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Phương thức</label>
+                    <select asp-for="Method" class="form-select">
+                        <option value="0">Tiền mặt</option>
+                    </select>
+                    <div class="form-text">Staff ghi nhận thu trực tiếp tại trung tâm.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Ghi chú</label>
+                    <input asp-for="Note" class="form-control" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Ghi nhận</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const studentItems = @Html.Raw(JsonSerializer.Serialize(
+        students.Where(s => s.IsActive).Select(s => new { id = s.Id, label = `${s.FullName} (${s.Email})` })));
+
+    const enrollmentItems = @Html.Raw(JsonSerializer.Serialize(
+        enrollments.Select(e => new { studentId = e.StudentId, classId = e.ClassId, classLabel = `${e.ClassName} - ${e.CourseName}` })));
+
+    const debtItems = @Html.Raw(JsonSerializer.Serialize(
+        debts.Select(d => new { studentId = d.StudentId, classId = d.ClassId, remaining = d.Remaining })));
+
+    const classItems = Object.values(
+        enrollmentItems.reduce((acc, item) => {
+            if (!acc[item.classId]) acc[item.classId] = { id: item.classId, label: item.classLabel };
+            return acc;
+        }, {})
+    );
+
+    const studentClassMap = enrollmentItems.reduce((acc, item) => {
+        if (!acc[item.studentId]) acc[item.studentId] = [];
+        if (!acc[item.studentId].includes(item.classId)) acc[item.studentId].push(item.classId);
+        return acc;
+    }, {});
+
+    const debtMap = debtItems.reduce((acc, item) => {
+        acc[`${item.studentId}_${item.classId}`] = Number(item.remaining);
+        return acc;
+    }, {});
+
+    const studentInput = document.getElementById("studentInput");
+    const studentId = document.getElementById("studentIdValue");
+    const classInput = document.getElementById("classInput");
+    const classId = document.getElementById("classIdValue");
+    const amountInput = document.getElementById("amountInput");
+    const amountHint = document.getElementById("amountHint");
+    const studentDebtSummary = document.getElementById("studentDebtSummary");
+
+    function formatVnd(value) {
+        return Number(value || 0).toLocaleString("vi-VN");
+    }
+
+    function setupAutocomplete(inputId, hiddenId, suggestionsId, getItems, emptyMessage, onSelected) {
+        const input = document.getElementById(inputId);
+        const hidden = document.getElementById(hiddenId);
+        const suggestions = document.getElementById(suggestionsId);
+        if (!input || !hidden || !suggestions) return;
+
+        function hideSuggestions() {
+            suggestions.classList.add("d-none");
+            suggestions.innerHTML = "";
+        }
+
+        function render(keyword) {
+            const normalized = (keyword || "").trim().toLowerCase();
+            const items = getItems();
+            if (!items.length) {
+                suggestions.innerHTML = "<div class='list-group-item text-muted small'>Không có dữ liệu phù hợp.</div>";
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            const matched = items.filter(x => !normalized || x.label.toLowerCase().includes(normalized)).slice(0, 20);
+            if (!matched.length) {
+                suggestions.innerHTML = `<div class='list-group-item text-muted small'>${emptyMessage}</div>`;
+                suggestions.classList.remove("d-none");
+                return;
+            }
+
+            suggestions.innerHTML = "";
+            matched.forEach(item => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "list-group-item list-group-item-action";
+                button.textContent = item.subtitle ? `${item.label} (${item.subtitle})` : item.label;
+                button.addEventListener("mousedown", e => {
+                    e.preventDefault();
+                    input.value = item.label;
+                    hidden.value = item.id;
+                    document.getElementById(inputId === "studentInput" ? "studentError")?.classList.add("d-none");
+                    document.getElementById(inputId === "classInput" ? "classError" : "noop")?.classList.add("d-none");
+                    hideSuggestions();
+                    onSelected?.(item);
+                });
+                suggestions.appendChild(button);
+            });
+
+            suggestions.classList.remove("d-none");
+        }
+
+        input.addEventListener("focus", () => render(input.value));
+        input.addEventListener("input", () => {
+            hidden.value = "";
+            if (inputId === "studentInput") onSelected?.(null);
+            render(input.value);
+        });
+        input.addEventListener("blur", () => setTimeout(hideSuggestions, 120));
+    }
+
+    function updateDebtSummary() {
+        if (!studentId.value) {
+            studentDebtSummary.classList.add("d-none");
+            studentDebtSummary.textContent = "";
+            return;
+        }
+
+        const rows = debtItems.filter(x => x.studentId === studentId.value && Number(x.remaining) > 0);
+        const total = rows.reduce((sum, x) => sum + Number(x.remaining), 0);
+        studentDebtSummary.classList.remove("d-none");
+        studentDebtSummary.innerHTML = rows.length
+            ? `<strong>Tổng công nợ còn lại:</strong> ${formatVnd(total)} VND (${rows.length} lớp).`
+            : "<strong>Học viên này hiện không còn công nợ.</strong>";
+    }
+
+    function updateAmountByClass() {
+        if (!studentId.value || !classId.value) {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Chọn lớp để xem số tiền còn lại cần đóng.";
+            return;
+        }
+        const remaining = Number(debtMap[`${studentId.value}_${classId.value}`] || 0);
+        if (remaining > 0) {
+            amountInput.max = String(remaining);
+            amountHint.textContent = `Số tiền còn lại của lớp: ${formatVnd(remaining)} VND.`;
+        } else {
+            amountInput.removeAttribute("max");
+            amountHint.textContent = "Lớp này đã đủ học phí.";
+        }
+    }
+
+    function clearClassSelection() {
+        classInput.value = "";
+        classId.value = "";
+        updateAmountByClass();
+    }
+
+    setupAutocomplete(
+        "studentInput", "studentIdValue", "studentSuggestions",
+        () => studentItems,
+        "Không tìm thấy học viên phù hợp.",
+        () => { clearClassSelection(); updateDebtSummary(); }
+    );
+
+    setupAutocomplete(
+        "classInput", "classIdValue", "classSuggestions",
+        () => {
+            if (!studentId.value) return classItems;
+            const allowedClassIds = studentClassMap[studentId.value] ?? [];
+            return classItems
+                .filter(x => allowedClassIds.includes(x.id))
+                .map(x => ({ ...x, subtitle: `Còn ${formatVnd(debtMap[`${studentId.value}_${x.id}`] || 0)} VND` }));
+        },
+        "Không tìm thấy lớp phù hợp với học viên đã chọn.",
+        () => updateAmountByClass()
+    );
+
+    document.querySelector("form")?.addEventListener("submit", function (e) {
+        let isValid = true;
+        if (!studentId.value) {
+            document.getElementById("studentError")?.classList.remove("d-none");
+            isValid = false;
+        }
+        if (!classId.value) {
+            document.getElementById("classError")?.classList.remove("d-none");
+            isValid = false;
+        }
+
+        const maxAmount = Number(amountInput.max || 0);
+        const enteredAmount = Number(amountInput.value || 0);
+        if (maxAmount > 0 && enteredAmount > maxAmount) {
+            amountHint.textContent = `Số tiền vượt quá phần còn lại (${formatVnd(maxAmount)} VND).`;
+            isValid = false;
+        }
+        if (!isValid) e.preventDefault();
+    });
+</script>
+}

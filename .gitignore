@@ -1,0 +1,16 @@
+.vs/
+
+# .NET build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Temporary build folders
+temp-build/
+
+# Logs and temp files
+*.log
+*.tmp

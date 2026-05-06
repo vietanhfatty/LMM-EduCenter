@@ -1,0 +1,35 @@
+@{
+    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    string Active(params string[] names) => names.Any(n => ctrl.Contains(n, StringComparison.OrdinalIgnoreCase)) ? "active" : "";
+}
+
+<li class="nav-item">
+    <a class="nav-link @Active("TeacherDashboard")" asp-controller="TeacherDashboard" asp-action="Index">
+        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("TeacherClass")" asp-controller="TeacherClass" asp-action="Index">
+        <i class="bi bi-calendar3 me-2"></i>Lớp dạy
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("TeacherSchedule", "TeacherAttendance")" asp-controller="TeacherSchedule" asp-action="Index">
+        <i class="bi bi-calendar-week me-2"></i>Lịch dạy
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("TeacherMaterial")" asp-controller="TeacherMaterial" asp-action="Index">
+        <i class="bi bi-upload me-2"></i>Gửi tài liệu
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("TeacherGrade")" asp-controller="TeacherGrade" asp-action="Index">
+        <i class="bi bi-journal-text me-2"></i>Điểm
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link @Active("TeacherNotification")" asp-controller="TeacherNotification" asp-action="Index">
+        <i class="bi bi-bell me-2"></i>Thông báo
+    </a>
+</li>

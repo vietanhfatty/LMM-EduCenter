@@ -1,0 +1,116 @@
+@model List<Client.Services.Models.PaymentDto>
+@{
+    ViewData["Title"] = "Quản lý học phí";
+    string keyword = ViewBag.Keyword as string ?? "";
+    int? method = ViewBag.Method as int?;
+    int? status = ViewBag.Status as int?;
+    int currentPage = ViewBag.Page ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalItems = ViewBag.TotalItems ?? 0;
+    int pageSize = ViewBag.PageSize ?? 10;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Quản lý học phí</h1>
+    <div>
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle me-1"></i>Ghi nhận thanh toán</a>
+        <a asp-action="Debts" class="btn btn-outline-warning btn-sm"><i class="bi bi-exclamation-triangle me-1"></i>Công nợ</a>
+        <a asp-action="Revenue" class="btn btn-outline-info btn-sm"><i class="bi bi-bar-chart me-1"></i>Doanh thu</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="Học viên, lớp, khóa học..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Phương thức</label>
+                <select name="method" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="0" selected="@(method == 0)">Tiền mặt</option>
+                    <option value="1" selected="@(method == 1)">Chuyển khoản</option>
+                    <option value="2" selected="@(method == 2)">Thẻ</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái</label>
+                <select name="status" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="0" selected="@(status == 0)">Chờ xử lý</option>
+                    <option value="1" selected="@(status == 1)">Đã thanh toán</option>
+                    <option value="2" selected="@(status == 2)">Đã hoàn</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Trang</label>
+                <select name="pageSize" class="form-select">
+                    <option value="5" selected="@(pageSize == 5)">5</option>
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                <a asp-action="Index" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Chưa có thanh toán nào.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead><tr><th>#</th><th>Học viên</th><th>Lớp</th><th>Số tiền</th><th>Phương thức</th><th>Trạng thái</th><th>Ngày</th><th>Ghi chú</th><th></th></tr></thead>
+            <tbody>
+                @{ var i = 0; }
+                @foreach (var p in Model)
+                {
+                    i++;
+                    <tr>
+                        <td>@(((currentPage - 1) * pageSize) + i)</td><td>@p.StudentName</td><td>@p.ClassName</td>
+                        <td class="fw-bold text-success">@p.Amount.ToString("N0") VND</td>
+                        <td>@p.MethodText</td>
+                        <td><span class="badge @p.StatusBadge">@p.StatusText</span></td>
+                        <td>@p.PaymentDate.ToString("dd/MM/yyyy")</td>
+                        <td>@(p.Note ?? "—")</td>
+                        <td class="text-end">
+                            @if (p.Method == 1 && p.Status == 0)
+                            {
+                                <form asp-action="ConfirmTransfer" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-check-circle me-1"></i>Xác nhận
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">Tổng: <strong>@totalItems</strong> giao dịch</div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-keyword="@keyword" asp-route-method="@method" asp-route-status="@status" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage - 1)">Trước</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">@currentPage / @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-keyword="@keyword" asp-route-method="@method" asp-route-status="@status" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage + 1)">Sau</a>
+            </li>
+        </ul>
+    </nav>
+</div>

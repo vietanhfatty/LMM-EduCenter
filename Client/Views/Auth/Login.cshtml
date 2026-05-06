@@ -1,0 +1,77 @@
+@model Client.ViewModels.Auth.LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+}
+
+<div class="login-shell">
+    <section class="login-hero">
+        <div class="position-relative z-1">
+            <div class="d-flex align-items-center mb-4">
+                <i class="bi bi-mortarboard-fill login-hero-icon me-2"></i>
+                <h1 class="login-hero-brand mb-0">LMM Education</h1>
+            </div>
+            <h2 class="login-hero-title">Tối ưu hóa quản lý giáo dục nội bộ</h2>
+            <p class="login-hero-text">
+                Hệ thống trung tâm để quản lý học viên, lớp học, điểm danh và báo cáo vận hành.
+            </p>
+        </div>
+        <div class="login-hero-card">
+            <div class="d-flex align-items-center mb-3">
+                <div class="login-hero-card-icon me-2">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div>
+                    <p class="login-hero-card-caption mb-0">BÁO CÁO MỚI NHẤT</p>
+                    <p class="login-hero-card-title mb-0">Tăng trưởng ghi danh</p>
+                </div>
+            </div>
+            <div class="login-hero-chart">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="login-form-panel">
+        <header class="mb-4">
+            <h3 class="login-form-title">Welcome back</h3>
+            <p class="login-form-subtitle mb-0">Đăng nhập để quản lý công việc tại LMM Education.</p>
+        </header>
+
+        <form asp-action="Login" method="post" class="login-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label login-label"></label>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input asp-for="Email" class="form-control login-input" placeholder="name@institution.edu" />
+                </div>
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="Password" class="form-label login-label"></label>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input asp-for="Password" type="password" class="form-control login-input" placeholder="••••••••" />
+                </div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn login-submit-btn">
+                    Đăng nhập
+                    <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </form>
+
+        <footer class="login-footer">
+            <p class="mb-0">© 2026 LMM Education</p>
+        </footer>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "Teacher Dashboard";
+}
+
+<div class="teacher-dashboard">
+    <div class="teacher-kpi-grid">
+        <div class="teacher-kpi-card">
+            <div class="teacher-kpi-icon teacher-kpi-icon-mint">
+                <i class="bi bi-people"></i>
+            </div>
+            <div>
+                <p class="teacher-kpi-label">Total Students</p>
+                <h3 class="teacher-kpi-value">124</h3>
+            </div>
+        </div>
+        <div class="teacher-kpi-card">
+            <div class="teacher-kpi-icon teacher-kpi-icon-blue">
+                <i class="bi bi-book"></i>
+            </div>
+            <div>
+                <p class="teacher-kpi-label">Ongoing Courses</p>
+                <h3 class="teacher-kpi-value">6</h3>
+            </div>
+        </div>
+        <div class="teacher-kpi-card">
+            <div class="teacher-kpi-icon teacher-kpi-icon-orange">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <p class="teacher-kpi-label">Contact Hours</p>
+                <h3 class="teacher-kpi-value">18h</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="teacher-content-grid">
+        <aside class="teacher-side-column">
+            <section class="teacher-card teacher-schedule-card">
+                <header class="teacher-card-header">
+                    <h2>Today's Schedule</h2>
+                </header>
+                <div class="teacher-schedule-list">
+                    <div class="teacher-schedule-item is-active">
+                        <div class="teacher-schedule-time">09:00 - 10:30</div>
+                        <h4>Advanced Mathematics</h4>
+                        <p>Classroom 402 • Grade 10</p>
+                    </div>
+                    <div class="teacher-schedule-item">
+                        <div class="teacher-schedule-time">11:00 - 12:30</div>
+                        <h4>Quantum Physics Intro</h4>
+                        <p>Lab 3 • Grade 12</p>
+                    </div>
+                    <div class="teacher-schedule-item">
+                        <div class="teacher-schedule-time">14:00 - 15:30</div>
+                        <h4>Algebra Review</h4>
+                        <p>Classroom 201 • Grade 9</p>
+                    </div>
+                </div>
+                <div class="teacher-schedule-footer">
+                    <a href="@Url.Action("Index", "TeacherSchedule")">View Full Schedule</a>
+                </div>
+            </section>
+
+            <section class="teacher-growth-card">
+                <h4>Teacher Growth</h4>
+                <p>Your average student satisfaction score is 4.8/5 this term. Excellent work!</p>
+                <div class="teacher-progress">
+                    <div></div>
+                </div>
+            </section>
+        </aside>
+    </div>
+</div>

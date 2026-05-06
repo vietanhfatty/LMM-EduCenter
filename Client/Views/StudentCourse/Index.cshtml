@@ -1,0 +1,87 @@
+@model List<Client.Services.Models.CourseDto>
+@{
+    ViewData["Title"] = "Khóa học";
+    string keyword = ViewBag.Keyword as string ?? "";
+    int currentPage = ViewBag.Page ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalItems = ViewBag.TotalItems ?? 0;
+    int pageSize = ViewBag.PageSize ?? 9;
+}
+
+<div class="page-header">
+    <h1>Khóa học đang mở</h1>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="Tên hoặc mô tả khóa học..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trang</label>
+                <select name="pageSize" class="form-select">
+                    <option value="6" selected="@(pageSize == 6)">6</option>
+                    <option value="9" selected="@(pageSize == 9)">9</option>
+                    <option value="12" selected="@(pageSize == 12)">12</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                <a asp-action="Index" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Hiện chưa có khóa học nào đang mở.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var course in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@course.Name</h5>
+                        <p class="text-muted small mb-2">
+                            @if (!string.IsNullOrEmpty(course.Description))
+                            {
+                                @(course.Description.Length > 120 ? course.Description[..120] + "..." : course.Description)
+                            }
+                        </p>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-clock me-1"></i>@course.DurationInHours giờ</li>
+                            <li><i class="bi bi-cash me-1"></i>@course.Fee.ToString("N0") VND</li>
+                            <li><i class="bi bi-collection me-1"></i>@course.ClassCount lớp học</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a asp-action="Details" asp-route-id="@course.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye me-1"></i>Xem chi tiết & Đăng ký
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">Tổng: <strong>@totalItems</strong> khóa học</div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-keyword="@keyword" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage - 1)">Trước</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">@currentPage / @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-keyword="@keyword" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage + 1)">Sau</a>
+            </li>
+        </ul>
+    </nav>
+</div>
